@@ -7,10 +7,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class UserDaoImpl_2 implements UserDao {
-    Jedis jedis = new Jedis("localhost");
+    Jedis jedis;
     int userAmount;
 
-    UserDaoImpl_2(){
+    public UserDaoImpl_2(){
+        jedis = new Jedis("localhost");
         if (jedis.exists("userAmount")){
             userAmount = Integer.parseInt(jedis.get("userAmount"));
         }
@@ -28,10 +29,10 @@ public class UserDaoImpl_2 implements UserDao {
                     "true".equals(jedis.get("user:"+i+":available"))){
                 UserVO user = new UserVO();
                 user.setUserId(String.valueOf(i));
-                user.setUsername(jedis.get("user"+i+"username"));
-                user.setPassword(jedis.get("user"+i+"password"));
-                user.setBirthday(jedis.get("user"+i+"birthday"));
-                user.setUserico(jedis.get("user"+i+"userico"));
+                user.setUsername(jedis.get("user:"+i+":username"));
+                user.setPassword(jedis.get("user:"+i+":password"));
+                user.setBirthday(jedis.get("user:"+i+":birthday"));
+                user.setUserico(jedis.get("user:"+i+":userico"));
 
                 users.add(user);
             }
@@ -41,6 +42,7 @@ public class UserDaoImpl_2 implements UserDao {
 
     @Override
     public List<UserVO> queryByName(String name) {
+
         return null;
     }
 
@@ -64,16 +66,24 @@ public class UserDaoImpl_2 implements UserDao {
         String available = "user:"+user.getUserId()+":available";
 
         //save com.company.enity.UserVO.UserVO
-        if (!user.getUsername().isEmpty())jedis.set(username,user.getUsername());
-        if (!user.getPassword().isEmpty())jedis.set(password,user.getPassword());
-        if (!user.getBirthday().isEmpty())jedis.set(birthday,user.getBirthday());
-        if (!user.getUserico().isEmpty())jedis.set(userico,user.getUserico());
-        jedis.set(available,"true");
+        if (!"".equals(user.getUsername()) || null != user.getUsername()){
+            jedis.set(username,user.getUsername());
+            addInvertedIndex(user.getUsername(),"username",userId);
 
-        addInvertedIndex(username,"username",userId);
-        addInvertedIndex(password,"password",userId);
-        addInvertedIndex(birthday,"birthday",userId);
-        addInvertedIndex(userico,"userico",userId);
+        }
+        if (!"".equals(user.getPassword()) || null != user.getPassword()){
+            jedis.set(password,user.getPassword());
+        }
+        if (!"".equals(user.getBirthday()) || null != user.getBirthday()){
+            jedis.set(birthday,user.getBirthday());
+            addInvertedIndex(user.getBirthday(),"birthday",userId);
+        }
+        if (!"".equals(user.getUserico()) && null != user.getUserico()){
+            jedis.set(userico,user.getUserico());
+            addInvertedIndex(user.getUserico(),"userico",userId);
+        }
+
+        jedis.set(available,"true");
 
     }
 
@@ -92,11 +102,14 @@ public class UserDaoImpl_2 implements UserDao {
         //hash_table
         //index:value type:attr addr:id
         //eg: man username user.getUserId();
+        System.out.println("index:"+index);
+        System.out.println("type:"+type);
+        System.out.println(jedis.hexists(index,type));
         if (jedis.hexists(index,type)){
-            jedis.hset(index,type,addr);
-        }else {
             String str = jedis.hget(index,type);
             str += "::"+addr;
+            jedis.hset(index,type,str);
+        }else {
             jedis.hset(index,type,addr);
         }
     }
@@ -106,14 +119,33 @@ public class UserDaoImpl_2 implements UserDao {
             String str = jedis.hget(index,type);
             String []result = str.split("::");
 
-            if (result.length == 1) jedis.hdel(index,type);
-
-            for (String r:result){
-                if (addr != r){
-                    str += r+"::";
+            if (result.length == 1) {
+                jedis.hdel(index,type);
+            }
+            else if (result.length == 2){
+                if (result[0].equals(addr)){
+                    str = result[1];
+                }else {
+                    str = result[0];
+                }
+            }
+            else{
+                int i=1;
+                if (result[0].equals(addr)){
+                    i++;
+                    str = ""+result[1];
+                }
+                else {
+                    str = ""+result[0];
                 }
 
+                for (; i<result.length; i++){
+                    if (!result[i].equals(addr))str += "::" + result[i];
+                }
             }
+
+            jedis.hset(index,type,str);
+
         }
     }
 }
