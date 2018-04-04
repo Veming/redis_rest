@@ -34,6 +34,7 @@ public class UserDaoImpl_2 implements UserDao {
                 user.setBirthday(jedis.get("user:"+i+":birthday"));
                 user.setUserico(jedis.get("user:"+i+":userico"));
 
+
                 users.add(user);
             }
         }
