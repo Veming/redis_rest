@@ -106,6 +106,7 @@ public class UserDaoImpl_2 implements UserDao {
 
         UserVO oldUser = queryById(user.getUserId());
         if (null == oldUser || "".equals(user.getUserId()))return;
+
         updateParam(oldUser.getUsername(),user.getUsername(),"username",user.getUserId());
 
         updateParam(oldUser.getBirthday(),user.getBirthday(),"birthday",user.getUserId());
