@@ -16,31 +16,25 @@ public class Main {
         UserVO user = new UserVO();
 
 
-        user.setUsername("angelart");
-        user.setPassword("1");
+        user.setUserId("5");
+        user.setUsername("dome");
+        user.setPassword("123123123");
         user.setBirthday("1970-1-1");
+        user.setUserico("/url");
 
-        Jedis jedis = new Jedis("localhost");
 
+//        Jedis jedis = new Jedis("localhost");
+//        userDao.delete(user);
 //        System.out.println(jedis.hexists("angelart","username"));
 
 //        userDao.insert(user);
+        userDao.update(user);
         for (UserVO usr:userDao.queryAll()){
-            System.out.println("UserID:"+usr.getUserId()+"\tUsername:"+usr.getUsername()+"\tUserPassword:"+usr.getPassword()+"\tBirthday:"+usr.getBirthday());
+            System.out.println("UserID:"+usr.getUserId()+"\tUsername:"+usr.getUsername()+
+                    "\tUserPassword:"+usr.getPassword()+"\tBirthday:"+usr.getBirthday()+
+                    "\tuserico:"+usr.getUserico());
         }
 
-
-//        String str = "10";
-//
-//        str += "_"+"123";
-//
-//        String []result = str.split("_");
-//
-//        for (String s:result){
-//            System.out.println(s);
-//        }
-//
-//        System.out.println(str);
 
 
     }

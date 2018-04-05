@@ -24,17 +24,8 @@ public class UserDaoImpl_2 implements UserDao {
     public List<UserVO> queryAll() {
         List<UserVO> users = new ArrayList<>();
         for (int i=1;i<=userAmount;i++){
-            //judge whether the userid exists and availability
-            if (jedis.exists("user:"+i+":available") &&
-                    "true".equals(jedis.get("user:"+i+":available"))){
-                UserVO user = new UserVO();
-                user.setUserId(String.valueOf(i));
-                user.setUsername(jedis.get("user:"+i+":username"));
-                user.setPassword(jedis.get("user:"+i+":password"));
-                user.setBirthday(jedis.get("user:"+i+":birthday"));
-                user.setUserico(jedis.get("user:"+i+":userico"));
-
-
+            UserVO user = queryById(""+i);
+            if (null != user){
                 users.add(user);
             }
         }
@@ -43,13 +34,35 @@ public class UserDaoImpl_2 implements UserDao {
 
     @Override
     public List<UserVO> queryByName(String name) {
+        String str = jedis.hget(name,"username");
+        String []results = str.split("::");
+        List<UserVO> users = new ArrayList<>();
 
-        return null;
+        for(String result:results){
+            UserVO user = queryById(""+result);
+            if (null != user){
+                users.add(user);
+            }
+        }
+        return users;
     }
 
     @Override
     public UserVO queryById(String userId) {
-        return null;
+        //judge whether the userid exists and availability
+        if (jedis.exists("user:"+userId+":available") &&
+                "true".equals(jedis.get("user:"+userId+":available"))){
+            UserVO user = new UserVO();
+            user.setUserId(String.valueOf(userId));
+            user.setUsername(jedis.get("user:"+userId+":username"));
+            user.setPassword(jedis.get("user:"+userId+":password"));
+            user.setBirthday(jedis.get("user:"+userId+":birthday"));
+            user.setUserico(jedis.get("user:"+userId+":userico"));
+            return user;
+        }
+        else {
+            return null;
+        }
     }
 
     @Override
@@ -91,11 +104,29 @@ public class UserDaoImpl_2 implements UserDao {
     @Override
     public void update(UserVO user) {
 
+        UserVO oldUser = queryById(user.getUserId());
+        if (null == oldUser || "".equals(user.getUserId()))return;
+        updateParam(oldUser.getUsername(),user.getUsername(),"username",user.getUserId());
+
+        updateParam(oldUser.getBirthday(),user.getBirthday(),"birthday",user.getUserId());
+
+        updateParam(oldUser.getPassword(),user.getPassword(),"password",user.getUserId());
+
+        updateParam(oldUser.getUserico(),user.getUserico(),"userico",user.getUserId());
     }
 
     @Override
     public void delete(UserVO user) {
+        if (jedis.exists("user:"+user.getUserId()+":available") &&
+                "true".equals(jedis.get("user:"+user.getUserId()+":available"))){
+            user = queryById(user.getUserId());
 
+            jedis.set("user:"+user.getUserId()+":available","false");
+
+            deleteInvertedIndex(user.getUsername(),"username",user.getUserId());
+            deleteInvertedIndex(user.getBirthday(),"birthday",user.getUserId());
+            deleteInvertedIndex(user.getUserico(),"userico",user.getUserId());
+        }
     }
 
     private void addInvertedIndex(String index, String type, String addr){
@@ -105,7 +136,7 @@ public class UserDaoImpl_2 implements UserDao {
         //eg: man username user.getUserId();
         System.out.println("index:"+index);
         System.out.println("type:"+type);
-        System.out.println(jedis.hexists(index,type));
+//        System.out.println(jedis.hexists(index,type));
         if (jedis.hexists(index,type)){
             String str = jedis.hget(index,type);
             str += "::"+addr;
@@ -116,7 +147,9 @@ public class UserDaoImpl_2 implements UserDao {
     }
 
     private void deleteInvertedIndex(String index, String type, String addr){
-        if (jedis.hexists(index,type)){
+        if (index != null &&
+                !"".equals(index) &&
+                jedis.hexists(index,type)){
             String str = jedis.hget(index,type);
             String []result = str.split("::");
 
@@ -147,6 +180,30 @@ public class UserDaoImpl_2 implements UserDao {
 
             jedis.hset(index,type,str);
 
+        }
+    }
+
+    private void updateParam(String oldParam, String param,String type, String addr){
+        if (null == oldParam && null == param){
+            return;
+        }
+        else if (null == oldParam && null != param){
+            jedis.set("user:"+addr+":"+type,param);
+            addInvertedIndex(param, type, addr);
+        }
+        else if (null != oldParam && null == param){
+            jedis.del("user:"+addr+":"+type);
+            deleteInvertedIndex(oldParam, type, addr);
+        }
+        else if (null != oldParam && null != param){
+            if (oldParam.equals(param)){
+                jedis.set("user:"+addr+":"+type,param);
+
+                if ("password".equals(type))return;
+
+                deleteInvertedIndex(oldParam, type, addr);
+                addInvertedIndex(param, type, addr);
+            }
         }
     }
 }
