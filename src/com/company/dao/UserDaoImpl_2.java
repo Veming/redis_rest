@@ -11,7 +11,8 @@ public class UserDaoImpl_2 implements UserDao {
     int userAmount;
 
     public UserDaoImpl_2(){
-        jedis = new Jedis("localhost");
+        jedis = new Jedis("localhost",7003);
+        jedis.auth("0234kz9*l");
         if (jedis.exists("userAmount")){
             userAmount = Integer.parseInt(jedis.get("userAmount"));
         }
