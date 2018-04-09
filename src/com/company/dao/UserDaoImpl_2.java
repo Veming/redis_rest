@@ -8,11 +8,12 @@ import java.util.List;
 
 public class UserDaoImpl_2 implements UserDao {
     Jedis jedis;
-    int userAmount;
+    private static int userAmount;
+    //userid 最好还是根据时间来设置 通过时间和自增长 生成伪随机数
 
     public UserDaoImpl_2(){
-        jedis = new Jedis("localhost",7003);
-        jedis.auth("0234kz9*l");
+        jedis = new Jedis("localhost");
+//        jedis.auth("0234kz9*l");
         if (jedis.exists("userAmount")){
             userAmount = Integer.parseInt(jedis.get("userAmount"));
         }
